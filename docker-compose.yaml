@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:18
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+
+    # volumes:
+    #   - postgres_data:/var/lib/postgresql
+  backend:
+    build: .
+    ports:
+      - 8000:8000
+    container_name: my_backend
+    depends_on:
+      - redis
+      - db
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+
+  worker:
+    build: .
+    command:
+      [
+        "celery",
+        "-A",
+        "src.celery_conn:app",
+        "worker",
+        "--loglevel=info",
+        "--concurrency=2",
+      ]
+    depends_on:
+      - redis
+  flower:
+    build: .
+    ports:
+      - 5555:5555
+    command: ["celery", "-A", "src.celery_conn:app", "flower", "--port=5555"]
+    depends_on:
+      - redis
+
+volumes:
+  redis_data:
+  # postgres_data:
